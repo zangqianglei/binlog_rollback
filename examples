@@ -54,3 +54,99 @@ root:test> select * from table1;
 |  3 |    3 | c    |   10 |
 +----+------+------+------+
 rows in set (0.00 sec)
+
+接下来利用脚本来生成反向SQL
+
+[root@diandi ~]# python binlog_rollback.py -f /log/mysql/bin/mysql-bin.000002  -o rollback.sql -u query -p 123456 --start-datetime='2016-10-28 00:00:00' -d test
+正在获取参数.....
+正在解析binlog.....
+正在初始化列名.....
+正在开始拼凑sql.....
+done!
+
+查看反向SQL，最新的DML会生成在输入文件的最前面
+ 
+
+[root@diandi ~]# cat rollback.sql 
+## at 155848
+##161028 17:07:10 server id 22100  end_log_pos 155898 CRC32 0x5000bca7  Delete_rows: table id 351 flags: STMT_END_F
+INSERT INTO `test`.`table1`
+SET
+  id=1
+  ,c1=1
+  ,c2='a'
+  ,c3=1;
+## at 155560
+##161028 17:04:56 server id 22100  end_log_pos 155626 CRC32 0x11d91e2d  Update_rows: table id 351 flags: STMT_END_F
+UPDATE `test`.`table1`
+SET
+  id=3
+  ,c1=3
+  ,c2='c'
+  ,c3=3
+WHERE
+  id=3
+  AND c1=3
+  AND c2='c'
+  AND c3=10;
+## at 155258
+##161028 16:59:31 server id 22100  end_log_pos 155338 CRC32 0x3978c1c1  Write_rows: table id 351 flags: STMT_END_F
+DELETE FROM `test`.`table1`
+WHERE
+  id=3
+  AND c1=3
+  AND c2='c'
+  AND c3=3;
+DELETE FROM `test`.`table1`
+WHERE
+  id=2
+  AND c1=2
+  AND c2='b'
+  AND c3=2;
+DELETE FROM `test`.`table1`
+WHERE
+  id=1
+  AND c1=1
+  AND c2='a'
+  AND c3=1;
+
+执行回滚操作
+
+#直接source整个文件，table1将恢复到原来的空表状态（实际情况，在测试环境上按需索取，然后再恢复线上）
+root:test> source /root/rollback.sql
+Query OK, 1 row affected (0.01 sec)
+
+Query OK, 1 row affected (0.01 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+
+Query OK, 1 row affected (0.01 sec)
+
+Query OK, 1 row affected (0.01 sec)
+
+Query OK, 1 row affected (0.01 sec)
+
+root:test> select * from table1;
+Empty set (0.00 sec)
+
+ 
+具体的参数使用方法如下：
+
+[root@diandi ~]# python binlog_rollback.py 
+==========================================================================================
+Command line options :
+    --help                  # OUT : print help info
+    -f, --binlog            # IN  : binlog file. (required)
+    -o, --outfile           # OUT : output rollback sql file. (default 'rollback.sql')
+    -h, --host              # IN  : host. (default '127.0.0.1')
+    -u, --user              # IN  : user. (required)
+    -p, --password          # IN  : password. (required)
+    -P, --port              # IN  : port. (default 3306)
+    --start-datetime        # IN  : start datetime. (default '1970-01-01 00:00:00')
+    --stop-datetime         # IN  : stop datetime. default '2070-01-01 00:00:00'
+    --start-position        # IN  : start position. (default '4')
+    --stop-position         # IN  : stop position. (default '18446744073709551615')
+    -d, --database          # IN  : List entries for just this database (No default value).
+    --only-primary          # IN  : Only list primary key in where condition (default 0)
+
+Sample :
+   shell> python binlog_rollback.py -f 'mysql-bin.000001' -o '/tmp/rollback.sql' -h 192.168.0.1 -u 'user' -p 'pwd' -P 3307 -d dbname
