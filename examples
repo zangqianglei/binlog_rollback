@@ -1,0 +1,56 @@
+#首先创建一个只读账号
+root:test> grant select on *.* to 'query'@'127.0.0.1' identified by '123456';
+Query OK, 0 rows affected, 1 warning (0.01 sec)
+#测试表结构如下
+root:test> CREATE TABLE `table1` (
+    ->   `id` int(11) NOT NULL AUTO_INCREMENT,
+    ->   `c1` int(11) DEFAULT NULL,
+    ->   `c2` varchar(20) DEFAULT NULL,
+    ->   `c3` int(11) DEFAULT NULL,
+    ->   PRIMARY KEY (`id`)
+    -> );
+Query OK, 0 rows affected (0.09 sec)
+
+#插入三条数据
+root:test> insert into table1(c1,c2,c3) values (1,'a',1),(2,'b',2),(3,'c',3);
+Query OK, 3 rows affected (0.01 sec)
+Records: 3  Duplicates: 0  Warnings: 0
+
+root:test> select * from table1;
++----+------+------+------+
+| id | c1   | c2   | c3   |
++----+------+------+------+
+|  1 |    1 | a    |    1 |
+|  2 |    2 | b    |    2 |
+|  3 |    3 | c    |    3 |
++----+------+------+------+
+rows in set (0.00 sec)
+
+#更新一条数据
+root:test> update table1 set c3=10 where id=3;
+Query OK, 1 row affected (0.01 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+
+root:test> select * from table1;
++----+------+------+------+
+| id | c1   | c2   | c3   |
++----+------+------+------+
+|  1 |    1 | a    |    1 |
+|  2 |    2 | b    |    2 |
+|  3 |    3 | c    |   10 |
++----+------+------+------+
+rows in set (0.00 sec)
+
+#删除一条数据
+
+root:test> delete from table1 where id=1;
+Query OK, 1 row affected (0.01 sec)
+
+root:test> select * from table1;
++----+------+------+------+
+| id | c1   | c2   | c3   |
++----+------+------+------+
+|  2 |    2 | b    |    2 |
+|  3 |    3 | c    |   10 |
++----+------+------+------+
+rows in set (0.00 sec)
